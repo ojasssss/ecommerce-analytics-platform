@@ -1,0 +1,51 @@
+bundle:
+  name: ecommerce_analytics_platform
+
+include:
+  - resources/*.yml
+
+targets:
+  # ==========================================
+  # DEVELOPMENT WORKSPACE (Current)
+  # ==========================================
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405616474171822.2.azuredatabricks.net
+    
+    # In Dev, we explicitly append [dev] to job names so you can see them clearly
+    resources:
+      jobs:
+        bronze_ingestion_job:
+          name: "[${bundle.target}] Bronze Ingestion Job"
+
+    # Dev-Specific Variables
+    variables:
+      env: dev
+      catalog_name: ecommerce_analytics_dev
+      schema_bronze: bronze
+      schema_silver: silver
+      schema_gold: gold
+
+  # ==========================================
+  # PRODUCTION WORKSPACE (Future)
+  # ==========================================
+  prod:
+    mode: production
+    workspace:
+      # ACTION REQUIRED: You will replace this URL with your Prod Workspace URL later
+      host: https://adb-REPLACE_WITH_PROD_URL.2.azuredatabricks.net
+    
+    # In Prod, we might run as a Service Principal (Optional, but "Excellent" practice)
+    # run_as:
+    #   user_name: your-service-principal-id
+
+    # Prod-Specific Variables
+    variables:
+      env: prod
+      # In your Prod workspace, you will likely have a catalog named 'ecommerce_analytics_prod'
+      catalog_name: ecommerce_analytics_prod 
+      schema_bronze: bronze
+      schema_silver: silver
+      schema_gold: gold
