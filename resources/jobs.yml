@@ -1,0 +1,31 @@
+resources:
+  jobs:
+    ecommerce_unified_pipeline:
+      name: ecommerce_unified_pipeline
+      tasks:
+        - task_key: bronze_layer
+          pipeline_task:
+            pipeline_id: 49b0a020-ff8f-41d0-882f-2a73007c887a
+            full_refresh: false
+          email_notifications:
+            on_success:
+              - ojasyeole1271@gmail.com
+            on_failure:
+              - ojasyeole1271@gmail.com
+          notification_settings:
+            no_alert_for_canceled_runs: true
+            alert_on_last_attempt: true
+        - task_key: silver_layer
+          depends_on:
+            - task_key: bronze_layer
+          pipeline_task:
+            pipeline_id: 7b1120aa-b791-4d85-8904-369c85353c9b
+            full_refresh: false
+        - task_key: Gold_layer
+          depends_on:
+            - task_key: silver_layer
+          pipeline_task:
+            pipeline_id: 94607052-7b75-4d6a-86e7-b235e96246c9
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED
