@@ -1,0 +1,65 @@
+bundle:
+  name: ecommerce_analytics_platform
+
+include:
+  - resources/*.yml
+
+# =========================================================================
+# 1. VARIABLE DECLARATIONS (Must occur before usage)
+# =========================================================================
+variables:
+  env:
+    description: "The environment name (dev or prod)"
+    default: "dev"
+  
+  catalog_name:
+    description: "The Unity Catalog name for this environment"
+    default: "ecommerce_analytics_dev"
+
+  schema_bronze:
+    description: "Schema name for Bronze layer"
+    default: "bronze_layer"
+
+  schema_silver:
+    description: "Schema name for Silver layer"
+    default: "silver_layer"
+
+  schema_gold:
+    description: "Schema name for Gold layer"
+    default: "gold_layer"
+
+# =========================================================================
+# 2. TARGET ENVIRONMENTS
+# =========================================================================
+targets:
+  # --- DEVELOPMENT WORKSPACE ---
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405616474171822.2.azuredatabricks.net
+    
+    # Dev-Specific Assignments
+    variables:
+      env: dev
+      catalog_name: ecommerce_analytics_dev
+      # Matching the schema names used in your Python code
+      schema_bronze: bronze_layer
+      schema_silver: silver_layer
+      schema_gold: gold_layer
+
+  # --- PRODUCTION WORKSPACE ---
+  prod:
+    mode: production
+    workspace:
+      #  UPDATED WITH YOUR PROD URL
+      host: https://adb-7405613537867861.1.azuredatabricks.net
+    
+    # Prod-Specific Assignments
+    variables:
+      env: prod
+      # Assuming you will create this catalog in the new workspace
+      catalog_name: ecommerce_analytics_prod
+      schema_bronze: bronze_layer
+      schema_silver: silver_layer
+      schema_gold: gold_layer

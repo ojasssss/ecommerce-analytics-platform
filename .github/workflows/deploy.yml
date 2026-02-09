@@ -1,0 +1,44 @@
+name: Deploy Databricks Bundle
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  deploy:
+    name: "Deploy Bundle"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Install Databricks CLI
+      - uses: databricks/setup-cli@main
+
+      # ----------------------------------------------------------------
+      # DEPLOY TO DEV (Runs when branch is 'dev')
+      # ----------------------------------------------------------------
+      - name: Deploy to Dev
+        if: github.ref == 'refs/heads/dev'
+        env:
+          # Use the DEV specific token
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_DEV }}
+          DATABRICKS_BUNDLE_ENV: dev
+        run: databricks bundle deploy --target dev
+
+      # ----------------------------------------------------------------
+      # DEPLOY TO PROD (Runs when branch is 'main')
+      # ----------------------------------------------------------------
+      - name: Deploy to Prod
+        if: github.ref == 'refs/heads/main'
+        env:
+          # Use the PROD specific token
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PROD }}
+          DATABRICKS_BUNDLE_ENV: prod
+        run: databricks bundle deploy --target prod

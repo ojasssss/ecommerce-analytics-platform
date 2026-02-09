@@ -1,0 +1,12 @@
+resources:
+  pipelines:
+    pipeline_ecommerce_dlt_silver:
+      name: ecommerce-dlt-silver
+      libraries:
+        - glob:
+            include: /Workspace/Users/pryeole098@gmail.com/ecommerce-analytics-platform/src/dlt_pipelines/02_silver_transformation
+      schema: silver_layer
+      photon: true
+      catalog: ecommerce_analytics_dev
+      serverless: true
+      root_path: /Workspace/Users/pryeole098@gmail.com/ecommerce-analytics-platform/src/dlt_pipelines
