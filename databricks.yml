@@ -43,7 +43,6 @@ targets:
     variables:
       env: dev
       catalog_name: ecommerce_analytics_dev
-      # Matching the schema names used in your Python code
       schema_bronze: bronze_layer
       schema_silver: silver_layer
       schema_gold: gold_layer
@@ -52,13 +51,17 @@ targets:
   prod:
     mode: production
     workspace:
-      #  UPDATED WITH YOUR PROD URL
       host: https://adb-7405613537867861.1.azuredatabricks.net
+      # -----------------------------------------------------------
+      # CRITICAL FIX: Production mode requires a fixed root_path
+      # This ensures all prod deployments go to the exact same folder
+      # -----------------------------------------------------------
+      root_path: /Workspace/Users/pryeole098@gmail.com/.bundle/${bundle.name}/${bundle.target}
     
     # Prod-Specific Assignments
     variables:
       env: prod
-      # Assuming you will create this catalog in the new workspace
+      # Make sure this catalog exists in your PROD workspace!
       catalog_name: ecommerce_analytics_prod
       schema_bronze: bronze_layer
       schema_silver: silver_layer
