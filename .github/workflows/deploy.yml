@@ -16,24 +16,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download the code from the repo
       - uses: actions/checkout@v3
 
-      # 2. Install the Databricks CLI
+      # Install Databricks CLI
       - uses: databricks/setup-cli@main
 
-      # 3. Deploy to the correct environment
+      # ----------------------------------------------------------------
+      # DEPLOY TO DEV (Runs when branch is 'dev')
+      # ----------------------------------------------------------------
       - name: Deploy to Dev
         if: github.ref == 'refs/heads/dev'
         env:
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          # Use the DEV specific token
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_DEV }}
           DATABRICKS_BUNDLE_ENV: dev
         run: databricks bundle deploy --target dev
 
-      # 4. Deploy to Prod (Only runs on main branch)
+      # ----------------------------------------------------------------
+      # DEPLOY TO PROD (Runs when branch is 'main')
+      # ----------------------------------------------------------------
       - name: Deploy to Prod
         if: github.ref == 'refs/heads/main'
         env:
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          # Use the PROD specific token
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PROD }}
           DATABRICKS_BUNDLE_ENV: prod
         run: databricks bundle deploy --target prod
