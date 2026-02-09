@@ -1,0 +1,12 @@
+resources:
+  pipelines:
+    pipeline_ecommerce_dlt_gold:
+      name: ecommerce-dlt-gold
+      libraries:
+        - glob:
+            include: /Workspace/Users/pryeole098@gmail.com/ecommerce-analytics-platform/src/dlt_pipelines/03_gold_aggregations
+      schema: gold_layer
+      photon: true
+      catalog: ecommerce_analytics_dev
+      serverless: true
+      root_path: /Workspace/Users/pryeole098@gmail.com/ecommerce-analytics-platform/src/dlt_pipelines

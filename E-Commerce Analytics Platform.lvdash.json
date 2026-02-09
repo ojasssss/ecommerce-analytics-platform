@@ -1,0 +1,742 @@
+{
+  "datasets": [
+    {
+      "name": "b61b5e08",
+      "displayName": "Daily Revenue & Sales Trends",
+      "queryLines": [
+        "SELECT\r\n",
+        "    event_date,\r\n",
+        "    SUM(transaction_amount) as total_revenue,\r\n",
+        "    COUNT(transaction_amount) as total_transactions,\r\n",
+        "    COUNT(DISTINCT user_id) as unique_shoppers\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales\r\n",
+        "WHERE event_type = 'purchase'\r\n",
+        "GROUP BY event_date\r\n",
+        "ORDER BY event_date;"
+      ],
+      "catalog": "ecommerce_analytics_dev",
+      "schema": "default"
+    },
+    {
+      "name": "0e1f7c10",
+      "displayName": "Top 10 Brands by Revenue",
+      "queryLines": [
+        "SELECT\r\n",
+        "    brand,\r\n",
+        "    SUM(transaction_amount) as total_revenue,\r\n",
+        "    AVG(transaction_amount) as avg_order_value\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales\r\n",
+        "WHERE event_type = 'purchase' AND brand IS NOT NULL\r\n",
+        "GROUP BY brand\r\n",
+        "ORDER BY total_revenue DESC\r\n",
+        "LIMIT 10;"
+      ]
+    },
+    {
+      "name": "451e5431",
+      "displayName": "Product Price History (SCD Type 2 Proof)",
+      "queryLines": [
+        "SELECT\r\n",
+        "    product_id,\r\n",
+        "    brand,\r\n",
+        "    price as catalog_price,\r\n",
+        "    __START_AT as valid_from,\r\n",
+        "    __END_AT as valid_until\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_dim_products\r\n",
+        "WHERE product_id IN (\r\n",
+        "    -- Subquery to find a product that actually changed price\r\n",
+        "    SELECT product_id FROM ecommerce_analytics_dev.gold_layer.gold_dim_products\r\n",
+        "    GROUP BY product_id HAVING COUNT(*) > 1\r\n",
+        ")\r\n",
+        "ORDER BY product_id, __START_AT\r\n",
+        "LIMIT 100;"
+      ]
+    },
+    {
+      "name": "3d18ee9c",
+      "displayName": "Customer Journey Analysis",
+      "queryLines": [
+        "-- CUSTOMER JOURNEY FUNNEL\r\n",
+        "-- Shows how many people View -> Cart -> Purchase\r\n",
+        "SELECT \r\n",
+        "    CASE \r\n",
+        "        WHEN event_type = 'view' THEN '1. View Product'\r\n",
+        "        WHEN event_type = 'cart' THEN '2. Add to Cart'\r\n",
+        "        WHEN event_type = 'purchase' THEN '3. Purchase'\r\n",
+        "    END as funnel_stage,\r\n",
+        "    COUNT(DISTINCT user_id) as user_count,\r\n",
+        "    -- Calculate drop-off percentage relative to Views\r\n",
+        "    ROUND(COUNT(DISTINCT user_id) * 100.0 / (SELECT COUNT(DISTINCT user_id) FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales WHERE event_type = 'view'), 1) as conversion_pct\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales\r\n",
+        "WHERE event_type IN ('view', 'cart', 'purchase')\r\n",
+        "GROUP BY 1\r\n",
+        "ORDER BY 1;"
+      ],
+      "catalog": "ecommerce_analytics_dev",
+      "schema": "default"
+    },
+    {
+      "name": "ad379d87",
+      "displayName": "Product Performance Metrics",
+      "queryLines": [
+        "-- PRODUCT PERFORMANCE & CONVERSION RATES\r\n",
+        "SELECT \r\n",
+        "    brand,\r\n",
+        "    -- Metric 1: Revenue\r\n",
+        "    SUM(CASE WHEN event_type = 'purchase' THEN transaction_amount ELSE 0 END) as total_revenue,\r\n",
+        "    \r\n",
+        "    -- Metric 2: Demand (High views = High potential inventory need)\r\n",
+        "    COUNT(CASE WHEN event_type = 'view' THEN 1 END) as total_views,\r\n",
+        "    \r\n",
+        "    -- Metric 3: Conversion Rate (Purchases / Views)\r\n",
+        "    -- Protect against division by zero\r\n",
+        "    ROUND(\r\n",
+        "        SUM(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) * 100.0 / \r\n",
+        "        NULLIF(COUNT(CASE WHEN event_type = 'view' THEN 1 END), 0)\r\n",
+        "    , 2) as conversion_rate_pct\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales\r\n",
+        "WHERE brand IS NOT NULL AND brand != 'Unknown'\r\n",
+        "GROUP BY brand\r\n",
+        "HAVING total_views > 1000 -- Filter for significant data\r\n",
+        "ORDER BY total_revenue DESC\r\n",
+        "LIMIT 20;"
+      ],
+      "catalog": "ecommerce_analytics_dev",
+      "schema": "default"
+    },
+    {
+      "name": "eba8cae3",
+      "displayName": "Real-time Dashboards",
+      "queryLines": [
+        "-- LIVE SALES TICKER (Simulated for Historical Data)\r\n",
+        "-- This finds the latest data you actually have and shows the \"last 24 hours\" of that period.\r\n",
+        "\r\n",
+        "WITH MaxDate AS (\r\n",
+        "    SELECT MAX(event_time) as max_time \r\n",
+        "    FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales\r\n",
+        ")\r\n",
+        "SELECT \r\n",
+        "    hour(event_time) as hour_of_day,\r\n",
+        "    SUM(transaction_amount) as hourly_revenue,\r\n",
+        "    COUNT(CASE WHEN event_type = 'purchase' THEN 1 END) as sales_velocity\r\n",
+        "FROM ecommerce_analytics_dev.gold_layer.gold_fact_sales, MaxDate\r\n",
+        "WHERE event_time >= MaxDate.max_time - INTERVAL 24 HOURS\r\n",
+        "GROUP BY 1\r\n",
+        "ORDER BY 1;"
+      ],
+      "catalog": "ecommerce_analytics_dev",
+      "schema": "default"
+    }
+  ],
+  "pages": [
+    {
+      "name": "d78034a9",
+      "displayName": "Executive Summary",
+      "layout": [
+        {
+          "widget": {
+            "name": "daily-revenue-sales-trends",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b61b5e08",
+                  "fields": [
+                    {
+                      "name": "monthly(event_date)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `event_date`)"
+                    },
+                    {
+                      "name": "sum(total_revenue)",
+                      "expression": "SUM(`total_revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(event_date)",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(total_revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Revenue & Sales Trends"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top-10-brands-by-revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0e1f7c10",
+                  "fields": [
+                    {
+                      "name": "brand",
+                      "expression": "`brand`"
+                    },
+                    {
+                      "name": "sum(total_revenue)",
+                      "expression": "SUM(`total_revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "brand",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(total_revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Top 10 Brands by Revenue",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "product-price-history",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "451e5431",
+                  "fields": [
+                    {
+                      "name": "product_id",
+                      "expression": "`product_id`"
+                    },
+                    {
+                      "name": "brand",
+                      "expression": "`brand`"
+                    },
+                    {
+                      "name": "catalog_price",
+                      "expression": "`catalog_price`"
+                    },
+                    {
+                      "name": "valid_from",
+                      "expression": "`valid_from`"
+                    },
+                    {
+                      "name": "valid_until",
+                      "expression": "`valid_until`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "product_id",
+                    "title": "product_id",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "integer",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "brand",
+                    "title": "brand",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "catalog_price",
+                    "title": "catalog_price",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "float",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "valid_from",
+                    "title": "valid_from",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "datetime",
+                    "displayAs": "datetime"
+                  },
+                  {
+                    "fieldName": "valid_until",
+                    "title": "valid_until",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "datetime",
+                    "displayAs": "datetime"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "Product Price History",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "customer-journey-analysis",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "3d18ee9c",
+                  "fields": [
+                    {
+                      "name": "funnel_stage",
+                      "expression": "`funnel_stage`"
+                    },
+                    {
+                      "name": "sum(user_count)",
+                      "expression": "SUM(`user_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "funnel_stage",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(user_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Customer Journey Analysis",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "product-performance-metrics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ad379d87",
+                  "fields": [
+                    {
+                      "name": "brand",
+                      "expression": "`brand`"
+                    },
+                    {
+                      "name": "total_revenue",
+                      "expression": "`total_revenue`"
+                    },
+                    {
+                      "name": "total_views",
+                      "expression": "`total_views`"
+                    },
+                    {
+                      "name": "conversion_rate_pct",
+                      "expression": "`conversion_rate_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "brand",
+                    "title": "brand",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "total_revenue",
+                    "title": "total_revenue",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "float",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "total_views",
+                    "title": "total_views",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "integer",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "conversion_rate_pct",
+                    "title": "conversion_rate_pct",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "type": "decimal",
+                    "displayAs": "number"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "title": "Product Performance Metrics",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "live-monitoring-key-business-metrics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "eba8cae3",
+                  "fields": [
+                    {
+                      "name": "hour_of_day",
+                      "expression": "`hour_of_day`"
+                    },
+                    {
+                      "name": "sum(hourly_revenue)",
+                      "expression": "SUM(`hourly_revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour_of_day",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(hourly_revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "frame": {
+                "title": "Live monitoring of key business metrics",
+                "showTitle": true
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 18,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
