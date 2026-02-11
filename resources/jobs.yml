@@ -26,6 +26,13 @@ resources:
             - task_key: silver_layer
           pipeline_task:
             pipeline_id: 94607052-7b75-4d6a-86e7-b235e96246c9
+            full_refresh: false
+        - task_key: run_integrity_tests
+          depends_on:
+            - task_key: Gold_layer
+          notebook_task:
+            notebook_path: /Workspace/Users/pryeole098@gmail.com/ecommerce-analytics-platform/tests/testing_integrity
+            source: WORKSPACE
       queue:
         enabled: true
       performance_target: PERFORMANCE_OPTIMIZED
