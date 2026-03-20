@@ -269,7 +269,9 @@ Prepare a 20-minute walkthrough covering:
 **Ojas Yeole**
 
 🔗 GitHub: https://github.com/ojasssss
+
 🔗 LinkedIn: https://linkedin.com/in/ojas-yeole-0a1b82209
+
 🌐 Portfolio: https://ojasyeole-data-engineeri-aluhg5n.gamma.site/
 
 📜 Databricks Certification:
