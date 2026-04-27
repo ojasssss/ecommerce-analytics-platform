@@ -241,18 +241,6 @@ databricks bundle deploy -t prod
 
 ---
 
-## 🎥 Demo (For Interview)
-
-Prepare a 20-minute walkthrough covering:
-
-* Architecture explanation
-* Data pipeline (Bronze → Silver → Gold)
-* Unity Catalog setup
-* CI/CD pipeline (DABs)
-* Security implementation
-* Business insights
-
----
 
 ## ⭐ Key Highlights (For Recruiters)
 
